@@ -654,7 +654,7 @@ class ClassDescriptorDefaultImpl : public ClassDescriptor<TClass>
         else
         {
             using func_t = bool (*)(CClass*, const ScriptInstance, const ScriptInstance, uint32_t);
-            RelocFunc<func_t> func(RED4ext::Addresses::TTypedClass_IsEqual);
+            UniversalRelocFunc<func_t> func(Detail::AddressHashes::TTypedClass_IsEqual);
             return func(this, aLhs, aRhs, a3);
         }
     }
