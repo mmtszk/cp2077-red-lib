@@ -501,11 +501,8 @@ public:
         if (name != aAlias)
         {
             auto rtti = CRTTISystem::Get();
-            if (rtti->scriptToNative.Get(aAlias) == nullptr)
-            {
-                rtti->scriptToNative.Insert(aAlias, name);
-                rtti->nativeToScript.Insert(name, aAlias);
-            }
+            rtti->scriptToNative.InsertOrAssign(aAlias, name);
+            rtti->nativeToScript.InsertOrAssign(name, aAlias);
         }
     }
 
@@ -635,6 +632,50 @@ public:
         RegisterFunction(func);
 
         return func;
+    }
+
+    // Replaces a function with the same short name instead of adding a duplicate, so describing a type again
+    // (2.5 reloads scripts in-game) doesn't leave stale entries behind.
+    void RegisterFunction(CClassFunction* aFunc)
+    {
+        if (aFunc->flags.isStatic)
+        {
+            auto functionExists = false;
+
+            for (auto& existingFunc : staticFuncs)
+            {
+                if (existingFunc->shortName == aFunc->shortName)
+                {
+                    existingFunc = static_cast<CClassStaticFunction*>(aFunc);
+                    functionExists = true;
+                    break;
+                }
+            }
+
+            if (!functionExists)
+            {
+                staticFuncs.PushBack(static_cast<CClassStaticFunction*>(aFunc));
+            }
+        }
+        else
+        {
+            auto functionExists = false;
+
+            for (auto& existingFunc : funcs)
+            {
+                if (existingFunc->shortName == aFunc->shortName)
+                {
+                    existingFunc = aFunc;
+                    functionExists = true;
+                    break;
+                }
+            }
+
+            if (!functionExists)
+            {
+                funcs.PushBack(aFunc);
+            }
+        }
     }
 };
 
@@ -939,6 +980,12 @@ struct ClassDefinition
         {
             SystemBuilder<TClass>::RegisterGetter();
             SystemBuilder<TClass>::RegisterSystem();
+        }
+
+        if (auto alias = rtti->GetClassByScriptName(name))
+        {
+            rtti->scriptToNative.InsertOrAssign(name, name);
+            rtti->nativeToScript.InsertOrAssign(name, name);
         }
     }
 
